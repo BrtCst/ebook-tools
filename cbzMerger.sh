@@ -29,23 +29,26 @@ do_it() {
     filename=$(basename "${file%%.cbz}")
     echo "filename " "$filename"
     # Extraire le nom du volume
-    GROUP=$(echo "$filename" | grep -oP "$REGEX")
-    echo "volume " $GROUP
-    # Vérifier si le groupe de capture existe déjà
-    if [[ ! -d "$workdir/$GROUP" ]]; then
-      mkdir -p "$workdir/$GROUP"
+    volume=$(echo "$filename" | grep -oP "$REGEX")
+    if [ -n "$volume"]; then
+      volume="OneShot"
     fi
-    unzip "$file" -d "$workdir/$GROUP/$filename"
+    echo "volume " $volume
+    # Vérifier si le groupe de capture existe déjà
+    if [[ ! -d "$workdir/$volume" ]]; then
+      mkdir -p "$workdir/$volume"
+    fi
+    unzip "$file" -d "$workdir/$volume/$filename"
   done
 
   find "$workdir" -mindepth 1 -maxdepth 1 -type d| while IFS="" read -r volumeDir; do
     echo "zipping "$volumeDir
     # Crée un fichier zip contenant tous les répertoires extraits pour un volume
     pushd "$volumeDir"
-    volume=$(basename "$volumeDir")
-    zip -r "$output_cbz_prefix - $volume.cbz" .
+    currentVolume=$(basename "$volumeDir")
+    zip -r "$output_cbz_prefix - $currentVolume.cbz" .
     popd 
-    mv "$volumeDir/$output_cbz_prefix - $volume.cbz" "$output_dir/.."
+    mv "$volumeDir/$output_cbz_prefix - $currentVolume.cbz" "$output_dir/.."
   done
 
   # Supprime les répertoires extraits
