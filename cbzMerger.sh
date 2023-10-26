@@ -1,14 +1,14 @@
 #!/bin/bash
 
-while getopts ":bd:" opt; do
+while getopts ":b:d:" opt; do
   case $opt in
-    b) batch_mode=true;;
-    d) output_dir=$(basename "$OPTARG");;
+    b) batch_dir=$OPTARG;;
+    d) output_dir=$OPTARG;;
     *) echo "Usage: $0 -b|-d <directory>"; exit 1;;
   esac
 done
 
-if [ -z "$batch_mode" ] && [ -z "$output_dir" ]; then
+if [ -z "$batch_dir" ] && [ -z "$output_dir" ]; then
   echo 'Missing -b or -d' >&2
   exit 1
 fi
@@ -16,7 +16,7 @@ fi
 do_it() {
   echo "dir " $output_dir
   # Chemin du dossier de sortie
-  output_cbz="$output_dir.cbz"
+  output_cbz_prefix=$(basename "$output_dir")
   workdir="$output_dir"/workdir
 
   # Regex pour extraire le premier groupe de capture
@@ -36,22 +36,25 @@ do_it() {
       mkdir -p "$workdir/$GROUP"
     fi
     unzip "$file" -d "$workdir/$GROUP/$filename"
+  done
 
+  find "$workdir" -mindepth 1 -maxdepth 1 -type d| while IFS="" read -r volumeDir; do
+    echo "zipping "$volumeDir
     # Crée un fichier zip contenant tous les répertoires extraits pour un volume
-    pushd "$workdir/$GROUP"
-    zip -r "$output_dir - $GROUP.cbz" .
+    pushd "$volumeDir"
+    volume=$(basename "$volumeDir")
+    zip -r "$output_cbz_prefix - $volume.cbz" .
     popd 
-    mv "$workdir/$GROUP/$output_dir - $GROUP.cbz" .
-
+    mv "$volumeDir/$output_cbz_prefix - $volume.cbz" "$output_dir/.."
   done
 
   # Supprime les répertoires extraits
   rm -rf "$workdir"
 }
 
-if [ "$batch_mode" = true ]; then
-  for d in */; do
-    output_dir="${d%%/}"
+if [ -n "$batch_dir" ]; then
+  find "$batch_dir" -mindepth 1 -maxdepth 1 -type d| while IFS="" read -r output_dir; do
+    echo "$output_dir"
     do_it
   done
 else
